@@ -1,0 +1,80 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #0B0F14;
+  --color-bg2: #111820;
+  --color-slate-light: #343A40;
+  --color-slate-mid: #252C35;
+  --color-slate-dark: #1A2030;
+  
+  --color-teal: #008080;
+  --color-teal-bright: #00A8A8;
+  --color-teal-glow: #00BFBF;
+  --color-teal-dim: #005555;
+  
+  --color-gold: #C8A96E;
+  --color-redflag: #E05A5A;
+  --color-greenok: #4CAF82;
+
+  --font-sora: Sora, sans-serif;
+  --font-mono: JetBrains Mono, monospace;
+
+  --animate-spin-slow: spin 12s linear infinite;
+  --animate-spin-slow-reverse: spin 8s linear infinite reverse;
+  --animate-pulse-orb: pulseOrb 3s ease-in-out infinite;
+
+  @keyframes pulseOrb {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 1; }
+  }
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    background: #0B0F14;
+    color: #E2EAF0;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0B0F14;
+}
+::-webkit-scrollbar-thumb {
+  background: #1A2030;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #008080;
+}
+
+/* Premium Glow Utilities */
+.text-gradient-teal {
+  background: linear-gradient(135deg, #00A8A8 0%, #00BFBF 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.glass-card {
+  background: #252C35;
+  border: 1px solid rgba(0, 128, 128, 0.18);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.glow-teal {
+  box-shadow: 0 0 16px rgba(0, 128, 128, 0.4);
+}
+
+.glow-teal-large {
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(0, 128, 128, 0.08);
+}
