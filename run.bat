@@ -11,6 +11,8 @@ if exist ".venv\Scripts\activate.bat" (
     set "VENV_PATH=.venv"
 ) else if exist "venv\Scripts\activate.bat" (
     set "VENV_PATH=venv"
+) else if exist "..\.venv\Scripts\activate.bat" (
+    set "VENV_PATH=..\.venv"
 )
 
 if not defined VENV_PATH (

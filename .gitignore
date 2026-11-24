@@ -104,6 +104,7 @@ pnpm-debug.log*
 # Project Specific
 # =========================
 chroma_db/
+docs/
 
 # Data
 data/raw/*

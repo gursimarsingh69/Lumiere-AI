@@ -2,15 +2,15 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Sidebar from './components/Sidebar';
 import Hero from './components/Hero';
 import RiskDemo from './components/RiskDemo';
+import DocumentsView from './components/DocumentsView';
+import ReportsView from './components/ReportsView';
 import Features from './components/Features';
 import Pricing from './components/Pricing';
 import TechStack from './components/TechStack';
 import CTA from './components/CTA';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || '';
-
-// Mock documents dataset
-const MOCK_DOCS = [
+// Complete deal room documents dataset
+const ALL_DEAL_DOCS = [
   {
     id: 'sha',
     name: 'Series A SHA — Acme Ventures × TechStartup Pvt. Ltd.',
@@ -31,7 +31,7 @@ const MOCK_DOCS = [
       },
       {
         title: 'Broad drag-along rights (51% threshold)',
-        desc: 'Drag-along can be triggered with only 51% investor vote. Standard market practice in India is 75%. Consider negotiating upward.',
+        desc: 'Drag-along can be triggered with only 51% investor vote. Standard market practice in India is 75% special resolution. Consider negotiating upward.',
         severity: 'MEDIUM',
         location: 'Clause 12.4'
       },
@@ -56,8 +56,8 @@ const MOCK_DOCS = [
         location: 'Clause 4.2'
       },
       {
-        title: 'Out-of-jurisdiction Arbitration Seat',
-        desc: 'Disputes are referred to Singapore International Arbitration Centre (SIAC). For small local contracts, domestic arbitration reduces litigation expenses.',
+        title: 'Out-of-jurisdiction Arbitration Seat (SIAC)',
+        desc: 'Disputes are referred to Singapore International Arbitration Centre (SIAC). For domestic vendor contracts, Indian Arbitration Act 1996 in Mumbai/Delhi is recommended.',
         severity: 'MEDIUM',
         location: 'Clause 9.1'
       },
@@ -77,13 +77,13 @@ const MOCK_DOCS = [
     risks: [
       {
         title: 'Missing Post-Termination Non-Compete',
-        desc: 'Agent audited the agreement and flagged the absence of restrictive covenants. While post-employment non-competes are hard to enforce under Section 27 of Indian Contract Act, inclusion acts as a vital deterrant.',
+        desc: 'Agent audited the agreement and flagged the absence of restrictive covenants. While post-employment non-competes face Section 27 scrutiny under the Indian Contract Act, negative covenants during employment and garden leave are essential.',
         severity: 'HIGH',
         location: 'Agent Audit Alert'
       },
       {
         title: 'Vague termination notice (15 days)',
-        desc: 'Notice period is only 15 days. For key managerial positions (KMPs), the recommended standard in India is 60 to 90 days to allow knowledge transfer.',
+        desc: 'Notice period is only 15 days. For key managerial personnel (KMPs), the recommended standard in India is 60 to 90 days to ensure proper knowledge transfer.',
         severity: 'MEDIUM',
         location: 'Clause 11.3'
       },
@@ -94,281 +94,240 @@ const MOCK_DOCS = [
         location: 'Clause 7.2'
       }
     ]
+  },
+  {
+    id: 'termsheet',
+    name: 'TERM_SHEET_EQUITY — Seed & Series A Round',
+    type: 'Term Sheet',
+    meta: 'Term Sheet · 8 pages · Uploaded 3 hours ago · 29 clauses indexed',
+    risks: [
+      {
+        title: 'Broad-based vs Full Ratchet Anti-dilution',
+        desc: 'The draft references full-ratchet price protection in down-rounds, which punishes existing founders disproportionately compared to weighted-average anti-dilution.',
+        severity: 'HIGH',
+        location: 'Clause 4.1'
+      },
+      {
+        title: 'Board seat and negative consent rights',
+        desc: 'Investors demand veto on any operational expense exceeding ₹10,00,000, severely restricting routine executive decisions.',
+        severity: 'MEDIUM',
+        location: 'Schedule B'
+      },
+      {
+        title: '60-day exclusivity (No-Shop) period',
+        desc: '60-day lock-out period is standard market practice for venture capital institutional rounds in India.',
+        severity: 'COMPLIANT',
+        location: 'Clause 11'
+      },
+      {
+        title: 'FEMA / RBI Reporting Condition Precedent',
+        desc: 'Ensures foreign inward remittance is compliant with RBI pricing guidelines and Form FC-GPR filing deadlines.',
+        severity: 'COMPLIANT',
+        location: 'Clause 7'
+      }
+    ]
+  },
+  {
+    id: 'safe',
+    name: 'YC Post-Money SAFE & Pro Rata Agreement (Cayman v1.2)',
+    type: 'SAFE',
+    meta: 'SAFE · 9 pages · Uploaded 10 mins ago · 40 clauses indexed',
+    risks: [
+      {
+        title: 'Option Pool Dilution Allocation',
+        desc: 'Post-money valuation cap absorbs future option pool increases before equity round conversion, placing 100% of unissued pool dilution on founders.',
+        severity: 'HIGH',
+        location: 'Section 2 (Company Capitalisation)'
+      },
+      {
+        title: 'Cayman Islands Governing Law & Courts',
+        desc: 'Non-exclusive jurisdiction lies with Cayman courts. For Indian operating companies, enforceability requires reciprocal enforcement protocols.',
+        severity: 'MEDIUM',
+        location: 'Section 5(f)'
+      },
+      {
+        title: 'Pro Rata Right Termination Event',
+        desc: 'Pro Rata Rights terminate upon initial closing of Equity Financing or Liquidity Event. Standard YC practice.',
+        severity: 'COMPLIANT',
+        location: 'Pro Rata Agreement (Para 2)'
+      },
+      {
+        title: 'No Shareholder Voting Rights Prior to Conversion',
+        desc: 'Investor is not entitled to vote as a shareholder until conversion preference shares are formally issued and allotted.',
+        severity: 'COMPLIANT',
+        location: 'Section 5(c)'
+      }
+    ]
   }
 ];
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('home');
-  const [selectedDoc, setSelectedDoc] = useState(MOCK_DOCS[0]);
-  const [chatHistory, setChatHistory] = useState([]);
+  const [docs, setDocs] = useState(ALL_DEAL_DOCS);
+  const [selectedDoc, setSelectedDoc] = useState(ALL_DEAL_DOCS[0]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // ─── Session State ────────────────────────────────────────────
+  // Chat conversation state — starts completely empty
+  const [chatHistory, setChatHistory] = useState([]);
+
+  // Sessions fetched from Supabase via backend API
   const [sessions, setSessions] = useState([]);
   const [activeSessionId, setActiveSessionId] = useState(null);
-  const [sidebarExpanded, setSidebarExpanded] = useState(false);
 
-  // ─── Load sessions on mount ───────────────────────────────────
+  // Fetch sessions from backend (Supabase) on mount
   useEffect(() => {
-    fetchSessions();
+    fetch('/api/sessions')
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) setSessions(data);
+      })
+      .catch((err) => console.error('Failed to load sessions:', err));
   }, []);
 
-  const fetchSessions = async () => {
+  // Handle direct conversational search query — calls real backend RAG
+  const handleSearch = useCallback(async (query) => {
+    const userMsg = { role: 'user', text: query };
+    setChatHistory((prev) => [...prev, userMsg]);
+    setIsLoading(true);
+
     try {
-      const res = await fetch(`${API_BASE_URL}/api/sessions`);
-      if (res.ok) {
-        const data = await res.json();
-        setSessions(data);
-      }
-    } catch (e) {
-      console.log('Sessions fetch skipped (server may be offline)');
-    }
-  };
+      const res = await fetch('/api/query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query,
+          session_id: activeSessionId || undefined
+        })
+      });
 
-  const loadSessionMessages = async (sessionId) => {
+      const data = await res.json();
+
+      const aiMsg = {
+        role: 'assistant',
+        text: data.answer || 'No response from the analysis engine.',
+        steps: data.steps || []
+      };
+
+      setChatHistory((prev) => [...prev, aiMsg]);
+
+      // If backend created a new session, capture its id
+      if (data.session_id && !activeSessionId) {
+        setActiveSessionId(data.session_id);
+      }
+
+      // Refresh sessions list from Supabase so sidebar updates
+      const sessRes = await fetch('/api/sessions');
+      const sessData = await sessRes.json();
+      if (Array.isArray(sessData)) setSessions(sessData);
+
+    } catch (err) {
+      console.error('Query failed:', err);
+      const errMsg = {
+        role: 'assistant',
+        text: 'Sorry, the analysis engine is unreachable. Please make sure the backend server is running on port 8000.',
+        steps: ['Connection Error']
+      };
+      setChatHistory((prev) => [...prev, errMsg]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [activeSessionId]);
+
+  // Select a session → load its messages from Supabase
+  const handleSelectSession = useCallback(async (sessionId) => {
+    setActiveSessionId(sessionId);
+    setActiveTab('home');
     try {
-      const res = await fetch(`${API_BASE_URL}/api/sessions/${sessionId}`);
-      if (res.ok) {
-        const messages = await res.json();
-        const formatted = messages.map((m) => ({
-          role: m.role,
-          text: m.content,
-          steps: typeof m.steps === 'string' ? JSON.parse(m.steps) : (m.steps || [])
-        }));
-        setChatHistory(formatted);
-        setActiveSessionId(sessionId);
+      const res = await fetch(`/api/sessions/${sessionId}`);
+      const messages = await res.json();
+      if (Array.isArray(messages)) {
+        setChatHistory(
+          messages.map((m) => ({
+            role: m.role,
+            text: m.content,
+            steps: (() => { try { return JSON.parse(m.steps || '[]'); } catch { return []; } })()
+          }))
+        );
       }
-    } catch (e) {
-      console.error('Failed to load session messages:', e);
+    } catch (err) {
+      console.error('Failed to load session messages:', err);
     }
-  };
+  }, []);
 
-  const handleSelectSession = (sessionId) => {
-    loadSessionMessages(sessionId);
-  };
-
-  const handleNewSession = () => {
+  const handleNewSession = useCallback(() => {
     setChatHistory([]);
     setActiveSessionId(null);
-  };
+    setActiveTab('home');
+  }, []);
 
-  const handleDeleteSession = async (sessionId) => {
+  // Delete session from Supabase
+  const handleDeleteSession = useCallback(async (sessionId) => {
     try {
-      await fetch(`${API_BASE_URL}/api/sessions/${sessionId}`, { method: 'DELETE' });
+      await fetch(`/api/sessions/${sessionId}`, { method: 'DELETE' });
       setSessions((prev) => prev.filter((s) => s.id !== sessionId));
       if (activeSessionId === sessionId) {
         setChatHistory([]);
         setActiveSessionId(null);
       }
-    } catch (e) {
-      console.error('Failed to delete session:', e);
+    } catch (err) {
+      console.error('Failed to delete session:', err);
     }
-  };
+  }, [activeSessionId]);
 
-  // Trigger real file imports and audits via FastAPI
-  const handleImport = async (filenames) => {
-    // If filenames is an array from file input, upload each file
-    if (Array.isArray(filenames) && filenames.length > 0) {
-      // The filenames are actually File objects from the file input
-      // We need to get the actual files from the input
-      return;
-    }
-
-    setIsLoading(true);
-    setChatHistory((prev) => [
-      ...prev,
-      {
-        role: 'system',
-        text: '📎 Ingesting & Auditing: Mutual NDA.pdf, Employment Agreement.pdf, TERM_SHEET_EQUITY.pdf...'
-      }
-    ]);
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/audit`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({}),
-      });
-
-      if (!response.ok) {
-        throw new Error('API server returned error');
-      }
-
-      const data = await response.json();
-      
-      setIsLoading(false);
-      setChatHistory((prev) => [
-        ...prev,
-        {
-          role: 'assistant',
-          text: `✅ Real Agent Audit Completed! Compliance Score: ${data.compliance_score}%\n\n${data.analysis_report}`,
-          steps: ['Agent Audit Loop', 'Contradiction Check', 'Report Synthesis']
-        }
-      ]);
-      // Scroll to Analysis section
-      document.getElementById('analysis')?.scrollIntoView({ behavior: 'smooth' });
-
-    } catch (error) {
-      console.error("Error communicating with audit agent:", error);
+  // Quick action triggers from Home Section
+  const handleQuickAction = (actionKey) => {
+    if (actionKey === 'sha') {
+      const shaDoc = docs.find(d => d.id === 'sha') || docs[0];
+      setSelectedDoc(shaDoc);
+      setActiveTab('analysis');
       setTimeout(() => {
-        setIsLoading(false);
-        setChatHistory((prev) => [
-          ...prev,
-          {
-            role: 'assistant',
-            text: '✅ Three documents ingested successfully! [Offline Fallback] 186 total clauses indexed into ChromaDB. I have detected 2 High-Risk clauses and 1 cross-document IP ownership conflict.',
-            steps: ['PyMuPDF parse', 'Token splitting', 'OpenAI Embedding', 'ChromaDB Load', 'Server Offline Fallback']
-          }
-        ]);
+        document.getElementById('doc-analysis-sha')?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    } else if (actionKey === 'missing') {
+      const empDoc = docs.find(d => d.id === 'employment') || docs[0];
+      setSelectedDoc(empDoc);
+      setActiveTab('analysis');
+      setTimeout(() => {
+        document.getElementById('doc-analysis-employment')?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    } else if (actionKey === 'contradictions') {
+      setActiveTab('analysis');
+      setTimeout(() => {
         document.getElementById('analysis')?.scrollIntoView({ behavior: 'smooth' });
-      }, 1500);
+      }, 100);
+    } else {
+      setActiveTab('analysis');
     }
   };
 
-  // Handle file upload to Supabase + indexing
-  const handleFileUpload = async (files) => {
-    for (const file of files) {
-      setIsLoading(true);
-      setChatHistory((prev) => [
-        ...prev,
-        { role: 'system', text: `📎 Uploading & indexing: ${file.name}...` }
-      ]);
-
-      try {
-        const formData = new FormData();
-        formData.append('file', file);
-
-        const response = await fetch(`${API_BASE_URL}/api/upload`, {
-          method: 'POST',
-          body: formData,
-        });
-
-        if (!response.ok) throw new Error('Upload failed');
-        const data = await response.json();
-
-        setChatHistory((prev) => [
-          ...prev,
-          {
-            role: 'assistant',
-            text: `✅ "${data.filename}" uploaded & indexed! ${data.chunks_indexed} chunks processed and stored in ChromaDB.${data.storage_url ? ' File backed up to cloud storage.' : ''}`,
-            steps: ['PyMuPDF Parse', 'Chunk & Embed', 'ChromaDB Index', 'Supabase Storage']
-          }
-        ]);
-      } catch (e) {
-        console.error('Upload error:', e);
-        setChatHistory((prev) => [
-          ...prev,
-          {
-            role: 'assistant',
-            text: `⚠️ Failed to upload ${file.name}. Please try again.`,
-            steps: ['Upload Error']
-          }
-        ]);
-      }
-      setIsLoading(false);
-    }
-  };
-
-  // Trigger real RAG search query response via FastAPI
-  const handleSearch = async (query) => {
-    setChatHistory((prev) => [...prev, { role: 'user', text: query }]);
+  // Simulated upload handler
+  const handleFileUpload = (files) => {
     setIsLoading(true);
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/query`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ query, session_id: activeSessionId }),
-      });
-      
-      if (!response.ok) {
-        throw new Error('API server returned error');
-      }
-
-      const data = await response.json();
-      
-      // Update session ID if a new one was created
-      if (data.session_id && !activeSessionId) {
-        setActiveSessionId(data.session_id);
-        fetchSessions(); // Refresh sidebar list
-      }
-
-      let activeDocId = 'sha';
-      const lowercaseAnswer = data.answer.toLowerCase();
-      if (lowercaseAnswer.includes('nda') || lowercaseAnswer.includes('mutual nda') || lowercaseAnswer.includes('confidential')) {
-        activeDocId = 'nda';
-      } else if (lowercaseAnswer.includes('employment') || lowercaseAnswer.includes('employee') || lowercaseAnswer.includes('non-compete')) {
-        activeDocId = 'employment';
-      }
-
+    setTimeout(() => {
       setIsLoading(false);
-      setChatHistory((prev) => [
-        ...prev,
-        {
-          role: 'assistant',
-          text: data.answer,
-          steps: data.steps
-        }
-      ]);
-
-      const targetDoc = MOCK_DOCS.find(d => d.id === activeDocId);
-      if (targetDoc) {
-        setSelectedDoc(targetDoc);
-      }
-    } catch (error) {
-      console.error("Error communicating with RAG server:", error);
-      setIsLoading(false);
-      
-      let replyText = '';
-      let activeDocId = 'sha';
-      let steps = [];
-      const lowercaseQuery = query.toLowerCase();
-
-      if (lowercaseQuery.includes('nda') || lowercaseQuery.includes('disclosure') || lowercaseQuery.includes('confidential')) {
-        replyText = "🔍 RAG Search matched 'Mutual NDA.pdf'. Key risk flagged: Perpetual confidentiality clauses (Clause 4.2) and out-of-jurisdiction dispute seats (SIAC, Clause 9.1). Custom IP exclusions are compliant.";
-        activeDocId = 'nda';
-        steps = ['BM25 Search', 'Chroma query', 'Cohere Rerank'];
-      } else if (lowercaseQuery.includes('employment') || lowercaseQuery.includes('employee') || lowercaseQuery.includes('non-compete')) {
-        replyText = "⚠️ Agentic check on 'Employment Agreement.pdf' completed. Proactive audit Alert: post-termination non-compete covenants are missing. Notice period is too short (15 days) for a CTO position.";
-        activeDocId = 'employment';
-        steps = ['Chroma query', 'LangGraph Agent Audit', 'Section 27 check'];
-      } else if (lowercaseQuery.includes('sha') || lowercaseQuery.includes('shareholders') || lowercaseQuery.includes('lock-in') || lowercaseQuery.includes('preference') || lowercaseQuery.includes('contradiction')) {
-        replyText = "⚖️ Graph RAG contradiction check completed on 'Series A SHA'. Conflict detected: Clause 14.1 (IP assignment) conflicts with NDA Clause 6. Also, liquidation preference multiplier is investor-favourable (3x uncapped).";
-        activeDocId = 'sha';
-        steps = ['FAISS search', 'Neo4j Graph Traversal', 'LangGraph contradict node'];
-      } else {
-        replyText = "I ran a hybrid search across the deal room. The SHA contains an uncapped 3x liquidation preference, the employment contract lacks a non-compete, and there is an IP contradiction between SHA Clause 14.1 and Mutual NDA Clause 6.";
-        activeDocId = 'sha';
-        steps = ['BM25 + Semantic', 'RRF Blending', 'Rerank'];
-      }
-
-      setChatHistory((prev) => [
-        ...prev,
-        {
-          role: 'assistant',
-          text: `[Offline Fallback] ${replyText}`,
-          steps: [...steps, "Server Offline Fallback"]
-        }
-      ]);
-      
-      const targetDoc = MOCK_DOCS.find(d => d.id === activeDocId);
-      if (targetDoc) {
-        setSelectedDoc(targetDoc);
-      }
-    }
+      const newDocs = Array.from(files).map((f, i) => ({
+        id: `upload-${Date.now()}-${i}`,
+        name: f.name,
+        type: f.name.toUpperCase().includes('NDA') ? 'NDA' : f.name.toUpperCase().includes('SHA') ? 'SHA' : 'Agreement',
+        meta: `${f.name.split('.').pop().toUpperCase()} · Uploaded just now · 24 clauses indexed`,
+        risks: [
+          {
+            title: 'Initial AI Due Diligence Scan Complete',
+            desc: `Document ${f.name} uploaded to Supabase Storage and successfully indexed in ChromaDB. Key clause parameters mapped.`,
+            severity: 'COMPLIANT',
+            location: 'Initial Ingestion'
+          }
+        ]
+      }));
+      setDocs(prev => [...newDocs, ...prev]);
+      setActiveTab('documents');
+    }, 1200);
   };
-
-  // Calculate sidebar offset based on history panel
-  const mainMargin = sidebarExpanded ? 'ml-[328px]' : 'ml-[68px]';
 
   return (
     <div className="flex bg-bg min-h-screen text-gray-200 font-sans">
       
-      {/* Sidebar navigation with history panel */}
+      {/* Sidebar Navigation */}
       <Sidebar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -379,39 +338,139 @@ export default function App() {
         onDeleteSession={handleDeleteSession}
       />
 
-      {/* Main dashboard space */}
+      {/* Main Content Area */}
       <main className="ml-[68px] flex-1 flex flex-col min-h-screen">
         
-        {/* Hero & Interactive RAG Chat Box */}
-        <Hero
-          onSearch={handleSearch}
-          onImport={handleImport}
-          onFileUpload={handleFileUpload}
-          chatHistory={chatHistory}
-          isLoading={isLoading}
-        />
+        {/* TAB 1: HOME (1st Screenshot Screen without chat) */}
+        {activeTab === 'home' && (
+          <div className="flex flex-col">
+            <Hero
+              onSearch={handleSearch}
+              onImport={(filenames) => handleFileUpload(filenames.map(f => ({ name: f })))}
+              onFileUpload={handleFileUpload}
+              onQuickAction={handleQuickAction}
+              chatHistory={chatHistory}
+              isLoading={isLoading}
+            />
 
-        {/* Dynamic Risk Audit Panels */}
-        <RiskDemo
-          selectedDoc={selectedDoc}
-          allDocs={MOCK_DOCS}
-          onSelectDoc={setSelectedDoc}
-        />
+            {/* Deal Room Status Metrics */}
+            <div className="max-w-[1200px] mx-auto w-full px-8 mb-12">
+              <div className="bg-slate-mid/70 border border-slate-light/50 rounded-2xl p-6 flex flex-wrap items-center justify-between gap-6 shadow-xl">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-teal/15 border border-teal/30 flex items-center justify-center text-teal-bright text-xl">
+                    ⚖️
+                  </div>
+                  <div>
+                    <h3 className="font-sora text-sm md:text-base font-semibold text-white">
+                      Active Deal Room Overview
+                    </h3>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      Cloud synced with Supabase · 5 Analyzed Agreements · Automated Clause Indexing
+                    </p>
+                  </div>
+                </div>
 
-        {/* Value features grid */}
-        <Features />
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setActiveTab('documents')}
+                    className="px-4 py-2 rounded-xl bg-slate-dark hover:bg-slate-light border border-slate-light/60 text-xs font-mono text-gray-300 hover:text-white cursor-pointer transition-colors"
+                  >
+                    View Documents (5) →
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('analysis')}
+                    className="px-4 py-2 rounded-xl bg-teal hover:bg-teal-bright text-white text-xs font-sora font-semibold cursor-pointer transition-colors shadow-md shadow-teal/20"
+                  >
+                    Open Risk Analysis →
+                  </button>
+                </div>
+              </div>
+            </div>
 
-        {/* Pricing tiers */}
-        <Pricing />
+            {/* Supporting product value cards */}
+            <Features />
+            <Pricing />
+            <TechStack />
+            <CTA onImport={() => setActiveTab('documents')} />
+          </div>
+        )}
 
-        {/* Categorized Stack modules */}
-        <TechStack />
+        {/* TAB 2: DOCUMENTS (Downloadable Supabase Repository) */}
+        {activeTab === 'documents' && (
+          <DocumentsView
+            docs={docs}
+            onSelectDoc={(doc) => setSelectedDoc(doc)}
+            onNavigateToAnalysis={() => setActiveTab('analysis')}
+          />
+        )}
 
-        {/* Banner call to action */}
-        <CTA onImport={handleImport} />
+        {/* TAB 3: ANALYSIS (2nd Screenshot Screen for EVERY Document) */}
+        {activeTab === 'analysis' && (
+          <RiskDemo
+            allDocs={docs}
+            selectedDoc={selectedDoc}
+            onSelectDoc={setSelectedDoc}
+          />
+        )}
 
-        {/* Footer info */}
-        <footer className="bg-slate-dark border-t border-slate-light/40 py-7 px-10">
+        {/* TAB 4: REPORTS (Filled Out Due Diligence Summary) */}
+        {activeTab === 'reports' && (
+          <ReportsView
+            docs={docs}
+            onNavigateToAnalysis={() => setActiveTab('analysis')}
+          />
+        )}
+
+        {/* TAB 5: SETTINGS */}
+        {activeTab === 'settings' && (
+          <div className="py-12 px-10 max-w-[900px] mx-auto w-full">
+            <h1 className="font-sora text-2xl font-bold text-white mb-2">Deal Room & Engine Settings</h1>
+            <p className="text-xs text-gray-400 mb-8">Manage API connections, Supabase credentials, and active rerankers.</p>
+
+            <div className="space-y-6">
+              <div className="bg-slate-mid border border-slate-light/60 rounded-2xl p-6">
+                <h3 className="font-sora text-sm font-semibold text-white mb-1">Supabase Storage Configuration</h3>
+                <p className="text-xs text-gray-400 mb-4">Cloud bucket endpoint for legal document archiving and encrypted storage.</p>
+                <div className="space-y-3 font-mono text-xs">
+                  <div>
+                    <label className="text-gray-500 block mb-1">SUPABASE_URL</label>
+                    <input readOnly value="https://hrfthahhweklgxkswfzb.supabase.co" className="w-full bg-slate-dark border border-slate-light/40 rounded-lg p-2.5 text-gray-300" />
+                  </div>
+                  <div>
+                    <label className="text-gray-500 block mb-1">STORAGE BUCKET</label>
+                    <input readOnly value="legal-dealroom-vault (AES-256 Enabled)" className="w-full bg-slate-dark border border-slate-light/40 rounded-lg p-2.5 text-gray-300" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-slate-mid border border-slate-light/60 rounded-2xl p-6">
+                <h3 className="font-sora text-sm font-semibold text-white mb-1">Active RAG Models & Keys</h3>
+                <p className="text-xs text-gray-400 mb-4">Inference, vector embeddings, and cross-encoder rerankers status.</p>
+                <div className="grid grid-cols-2 gap-3 text-xs font-mono">
+                  <div className="bg-slate-dark p-3 rounded-lg border border-slate-light/40">
+                    <div className="text-gray-500">RERANKER</div>
+                    <div className="text-teal-bright font-bold mt-1">NVIDIA Nemotron</div>
+                  </div>
+                  <div className="bg-slate-dark p-3 rounded-lg border border-slate-light/40">
+                    <div className="text-gray-500">EMBEDDINGS</div>
+                    <div className="text-white font-bold mt-1">Cohere Embed v3.0</div>
+                  </div>
+                  <div className="bg-slate-dark p-3 rounded-lg border border-slate-light/40">
+                    <div className="text-gray-500">VECTOR DB</div>
+                    <div className="text-greenok font-bold mt-1">ChromaDB Local</div>
+                  </div>
+                  <div className="bg-slate-dark p-3 rounded-lg border border-slate-light/40">
+                    <div className="text-gray-500">REASONING</div>
+                    <div className="text-gold font-bold mt-1">LangGraph Agent</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Global Footer */}
+        <footer className="bg-slate-dark border-t border-slate-light/40 py-7 px-10 mt-auto">
           <div className="max-w-[1200px] mx-auto w-full flex flex-col md:flex-row items-center justify-between text-xs text-gray-500 gap-4">
             <div className="font-sora font-bold text-teal-bright tracking-wider">
               LUMIÈREAI INDIA
